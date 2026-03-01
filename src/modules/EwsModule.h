@@ -18,7 +18,7 @@ class EwsModule : public SinglePortModule, public Observable<const meshtastic_Me
     /** Constructor
      * name is for debugging output
      */
-    TextMessageModule() : SinglePortModule("text", meshtastic_PortNum_TEXT_MESSAGE_APP) {}
+    EwsModule() : SinglePortModule("text", meshtastic_PortNum_TEXT_MESSAGE_APP) {}
 
     bool recentlySeen(uint32_t id);
 
