@@ -46,6 +46,27 @@ ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp
     return ProcessMessage::CONTINUE; // Let others look at this message also if they want
 }
 
+char* TextMessageModule::translate_eng()
+{
+    char* msg_eng=char[250];
+    char* typeMsg;
+    char* region;
+    char* onsetWeek;
+    char* dayHour;
+    char* hazardType;
+    char* severity;
+    char* duration;
+    char* guidanceInstructionA;
+    char* guidanceInstructionB;
+
+    
+    sprintf(msg_eng,"%s\n%s\n%s week\n%s\n%s\nSeverity: %s\n%s\n%s\n%s\0", typeMsg, region, onsetWeek, dayHour, hazardType, severity, duration, guidanceInstructionA, guidanceInstructionB);
+
+
+
+
+}
+
 bool TextMessageModule::wantPacket(const meshtastic_MeshPacket *p)
 {
     return MeshService::isTextPayload(p);
