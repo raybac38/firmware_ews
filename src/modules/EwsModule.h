@@ -1,7 +1,6 @@
 #pragma once
 #include "Observer.h"
 #include "SinglePortModule.h"
-#define TEXT_PACKET_LIST_SIZE 50
 
 /**
  * Text message handling for Meshtastic.
@@ -20,8 +19,6 @@ class EwsModule : public SinglePortModule, public Observable<const meshtastic_Me
      */
     EwsModule() : SinglePortModule("text", meshtastic_PortNum_TEXT_MESSAGE_APP) {}
 
-    bool recentlySeen(uint32_t id);
-
   protected:
     /** Called to handle a particular incoming message
      *
@@ -32,8 +29,7 @@ class EwsModule : public SinglePortModule, public Observable<const meshtastic_Me
     virtual bool wantPacket(const meshtastic_MeshPacket *p) override;
 
   private:
-    uint32_t textPacketList[TEXT_PACKET_LIST_SIZE] = {0};
-    size_t textPacketListIndex = 0;
+    
 };
 
 extern EwsModule *ewsModule;
