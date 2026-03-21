@@ -1,4 +1,3 @@
-#include "TextMessageModule.h"
 #include "MeshService.h"
 #include "MessageStore.h"
 #include "NodeDB.h"
@@ -9,7 +8,7 @@
 #include "graphics/SharedUIDisplay.h"
 #include "graphics/draw/MessageRenderer.h"
 #include "main.h"
-TextMessageModule *textMessageModule;
+#include "EwsModule.h"
 
 char a1[][10]={"Test","Alert","Update","All Clear",};
 char a2[][70]={"Afghanistan" , "Albania" , "Antarctica" , "Algeria" , "American Samoa" , "Andorra" , "Angola" , "Antigua and Barbuda" , "Azerbaijan" , "Argentina" , "Australia" , "Austria" , "Bahamas (the)" , "Bahrain" , "Bangladesh" , "Armenia" , "Barbados" , "Belgium" , "Bermuda" , "Bhutan" , "Bolivia (Plurinational State of)" , "Bosnia and Herzegovina" , "Botswana" , "Bouvet Island" , "Brazil" , "Belize" , "British Indian Ocean Territory (the)" , "Solomon Islands" , "Virgin Islands (British)" , "Brunei Darussalam" , "Bulgaria" , "Myanmar" , "Burundi" , "Belarus" , "Cambodia" , "Cameroon" , "Canada" , "Cabo Verde" , "Cayman Islands (the)" , "Central African Republic (the)" , "Sri Lanka" , "Chad" , "Chile" , "China" , "Taiwan (Province of China)" , "Christmas Island" , "Cocos (Keeling) Islands (the)" , "Colombia" , "Comoros (the)" , "Mayotte" , "Congo (the)" , "Congo (the Democratic Republic of the)" , "Cook Islands (the)" , "Costa Rica" , "Croatia" , "Cuba" , "Cyprus" , "Czechia" , "Benin" , "Denmark" , "Dominica" , "Dominican Republic (the)" , "Ecuador" , "El Salvador" , "Equatorial Guinea" , "Ethiopia" , "Eritrea" , "Estonia" , "Faroe Islands (the)" , "Falkland Islands (the) [Malvinas]" , "South Georgia and the South Sandwich Islands" , "Fiji" , "Finland" , "Åland Islands" , "France" , "French Guiana" , "French Polynesia" , "French Southern Territories (the)" , "Djibouti" , "Gabon" , "Georgia" , "Gambia (the)" , "Palestine, State of" , "Germany" , "Ghana" , "Gibraltar" , "Kiribati" , "Greece" , "Greenland" , "Grenada" , "Guadeloupe" , "Guam" , "Guatemala" , "Guinea" , "Guyana" , "Haiti" , "Heard Island and McDonald Islands" , "Holy See (the)" , "Honduras" , "Hong Kong" , "Hungary" , "Iceland" , "India" , "Indonesia" , "Iran (Islamic Republic of)" , "Iraq" , "Ireland" , "Israel" , "Italy" , "Côte d'Ivoire" , "Jamaica" , "Japan" , "Kazakhstan" , "Jordan" , "Kenya" , "Korea (the Democratic People's Republic of)" , "Korea (the Republic of)" , "Kuwait" , "Kyrgyzstan" , "Lao People's Democratic Republic (the)" , "Lebanon" , "Lesotho" , "Latvia" , "Liberia" , "Libya" , "Liechtenstein" , "Lithuania" , "Luxembourg" , "Macao" , "Madagascar" , "Malawi" , "Malaysia" , "Maldives" , "Mali" , "Malta" , "Martinique" , "Mauritania" , "Mauritius" , "Mexico" , "Monaco" , "Mongolia" , "Moldova (the Republic of)" , "Montenegro" , "Montserrat" , "Morocco" , "Mozambique" , "Oman" , "Namibia" , "Nauru" , "Nepal" , "Netherlands (the)" , "Curaçao" , "Aruba" , "Sint Maarten (Dutch part)" , "Bonaire, Sint Eustatius and Saba" , "New Caledonia" , "Vanuatu" , "New Zealand" , "Nicaragua" , "Niger (the)" , "Nigeria" , "Niue" , "Norfolk Island" , "Norway" , "Northern Mariana Islands (the)" , "United States Minor Outlying Islands (the)" , "Micronesia (Federated States of)" , "Marshall Islands (the)" , "Palau" , "Pakistan" , "Panama" , "Papua New Guinea" , "Paraguay" , "Peru" , "Philippines (the)" , "Pitcairn" , "Poland" , "Portugal" , "Guinea-Bissau" , "Timor-Leste" , "Puerto Rico" , "Qatar" , "Réunion" , "Romania" , "Russian Federation (the)" , "Rwanda" , "Saint Barthélemy" , "Saint Helena, Ascension and Tristan da Cunha" , "Saint Kitts and Nevis" , "Anguilla" , "Saint Lucia" , "Saint Martin (French part)" , "Saint Pierre and Miquelon" , "Saint Vincent and the Grenadines" , "San Marino" , "Sao Tome and Principe" , "Saudi Arabia" , "Senegal" , "Serbia" , "Seychelles" , "Sierra Leone" , "Singapore" , "Slovakia" , "Viet Nam" , "Slovenia" , "Somalia" , "South Africa" , "Zimbabwe" , "Spain" , "South Sudan" , "Sudan (the)" , "Western Sahara*" , "Suriname" , "Svalbard and Jan Mayen" , "Eswatini" , "Sweden" , "Switzerland" , "Syrian Arab Republic (the)" , "Tajikistan" , "Thailand" , "Togo" , "Tokelau" , "Tonga" , "Trinidad and Tobago" , "United Arab Emirates (the)" , "Tunisia" , "Turkey" , "Turkmenistan" , "Turks and Caicos Islands (the)" , "Tuvalu" , "Uganda" , "Ukraine" , "North Macedonia" , "Egypt" , "United Kingdom of Great Britain and Northern Ireland (the)" , "Guernsey" , "Jersey" , "Isle of Man" , "Tanzania, the United Republic of" , "United States of America (the)" , "Virgin Islands (U.S.)" , "Burkina Faso" , "Uruguay" , "Uzbekistan" , "Venezuela (Bolivarian Republic of)" , "Wallis and Futuna" , "Samoa" , "Yemen" , "Zambia" , "EU Organisations" , "UN Organisations" , "International"};
@@ -205,74 +204,16 @@ char* translate_eng(int a1_, int a2_, int a4_, int a5_, int a6_, int a7_, int a8
 
 }
 
-
-ProcessMessage TextMessageModule::handleReceived(const meshtastic_MeshPacket &mp)
+ProcessMessage EwsModule::handleReceived(const meshtastic_MeshPacket &mp)
 {
 #if defined(DEBUG_PORT) && !defined(DEBUG_MUTE)
     auto &p = mp.decoded;
-    LOG_INFO("Received text msg from=0x%0x, id=0x%x, msg=%.*s", mp.from, mp.id, p.payload.size, p.payload.bytes);
+LOG_INFO("Received ews msg from=0x%0x", mp.from, mp.id);
 #endif
-    // add packet ID to the rolling list of packets
-    textPacketList[textPacketListIndex] = mp.id;
-    textPacketListIndex = (textPacketListIndex + 1) % TEXT_PACKET_LIST_SIZE;
-
-    // We only store/display messages destined for us.
-    devicestate.rx_text_message = mp;
-    devicestate.has_rx_text_message = true;
-    IF_SCREEN(
-        // Guard against running in MeshtasticUI or with no screen
-        if (config.display.displaymode != meshtastic_Config_DisplayConfig_DisplayMode_COLOR) {
-            // Store in the central message history
-            const StoredMessage &sm = messageStore.addFromPacket(mp);
-
-            // Pass message to renderer (banner + thread switching + scroll reset)
-            // Use the global Screen singleton to retrieve the current OLED display
-            auto *display = screen ? screen->getDisplayDevice() : nullptr;
-            graphics::MessageRenderer::handleNewMessage(display, sm, mp);
-        })
-    // Only trigger screen wake if configuration allows it
-    if (shouldWakeOnReceivedMessage()) {
-        powerFSM.trigger(EVENT_RECEIVED_MSG);
-    }
-
-    // Notify any observers (e.g. external modules that care about packets)
-    notifyObservers(&mp);
-
-    return ProcessMessage::CONTINUE; // Let others look at this message also if they want
+    return ProcessMessage::STOP;
 }
 
-char* TextMessageModule::translate_eng()
+bool EwsModule::wantPacket(const meshtastic_MeshPacket *p)
 {
-    char* msg_eng=char[250];
-    char* typeMsg;
-    char* region;
-    char* onsetWeek;
-    char* dayHour;
-    char* hazardType;
-    char* severity;
-    char* duration;
-    char* guidanceInstructionA;
-    char* guidanceInstructionB;
-
-    
-    sprintf(msg_eng,"%s\n%s\n%s week\n%s\n%s\nSeverity: %s\n%s\n%s\n%s\0", typeMsg, region, onsetWeek, dayHour, hazardType, severity, duration, guidanceInstructionA, guidanceInstructionB);
-
-
-
-
-}
-
-bool TextMessageModule::wantPacket(const meshtastic_MeshPacket *p)
-{
-    return MeshService::isTextPayload(p);
-}
-
-bool TextMessageModule::recentlySeen(uint32_t id)
-{
-    for (size_t i = 0; i < TEXT_PACKET_LIST_SIZE; i++) {
-        if (textPacketList[i] != 0 && textPacketList[i] == id) {
-            return true;
-        }
-    }
-    return false;
+    return p->decoded.portnum == meshtastic_PortNum_EWS;
 }
