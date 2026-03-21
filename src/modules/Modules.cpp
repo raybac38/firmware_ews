@@ -100,6 +100,11 @@
 #if defined(HAS_HARDWARE_WATCHDOG)
 #include "watchdog/watchdogThread.h"
 #endif
+
+#if !MESHTASTIC_EXCLUDE_EWS
+#include "modules/EwsModule.h"
+#endif
+
 /**
  * Create module instances here.  If you are adding a new module, you must 'new' it here (or somewhere else)
  */
@@ -242,6 +247,11 @@ void setupModules()
     if (moduleConfig.has_range_test && moduleConfig.range_test.enabled)
         new RangeTestModule();
 #endif
+
+#if !MESHTASTIC_EXCLUDE_EWS
+    ewsModule = new EwsModule();
+#endif
+
 #if defined(HAS_HARDWARE_WATCHDOG)
     watchdogThread = new WatchdogThread();
 #endif
