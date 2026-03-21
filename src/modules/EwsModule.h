@@ -20,8 +20,6 @@ class EwsModule : public SinglePortModule, public Observable<const meshtastic_Me
      */
     TextMessageModule() : SinglePortModule("text", meshtastic_PortNum_TEXT_MESSAGE_APP) {}
 
-    bool recentlySeen(uint32_t id);
-
   protected:
     /** Called to handle a particular incoming message
      *
