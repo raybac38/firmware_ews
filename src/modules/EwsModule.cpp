@@ -10,6 +10,7 @@
 #include "main.h"
 #include "EwsModule.h"
 #include "generated/meshtastic/ews.pb.h"
+#include "modules/TextMessageModule.h"
 
 EwsModule *ewsModule;
 
@@ -137,22 +138,31 @@ char* translate(char* language, int a1_, int a2_, int a4_, int a5_, int a6_, int
 
 }
 
-ProcessMessage EwsModule::handleReceived(const meshtastic_MeshPacket &mp)
-{
-    #if defined(DEBUG_PORT) && !defined(DEBUG_MUTE)
-    //char namechanel[12]=channelFile.channels[0].settings.name;
-    char* msg=translate((char*)"eng",0,0,0,0,0,1,0,0,0);
-    auto &p = mp.decoded;
-    LOG_INFO("Received ews msg from=0x%0x\news %s", mp.from, mp.id);
-    LOG_INFO("Message ews:%s",msg);
-    free(msg);
-    #endif
-    return ProcessMessage::CONTINUE;
-}
+// ProcessMessage EwsModule::handleReceived(const meshtastic_MeshPacket &mp)
+// {
+//     #if defined(DEBUG_PORT) && !defined(DEBUG_MUTE)
+//     //char namechanel[12]=channelFile.channels[0].settings.name;
+
+//     char* msg=translate((char*)"eng",0,0,0,0,0,1,0,0,0);
+//     auto &p = mp.decoded;
+//     LOG_INFO("Received ews msg from=0x%0x\news %s", mp.from, mp.id);
+//     LOG_INFO("Message ews:%s",msg);
+
+//     service->sendToPhone();
+
+//     free(msg);
+//     #endif
+//     return ProcessMessage::CONTINUE;
+// }
 
 
-bool EwsModule::wantPacket(const meshtastic_MeshPacket *p)
+EwsModule::EwsModule() : ProtobufModule("ews", meshtastic_PortNum_EWS, &meshtastic_Ews_msg) {}
+
+bool EwsModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtastic_Ews *msg)
 {
-    LOG_INFO("EWS MODUlE");
-    return p->decoded.portnum == meshtastic_PortNum_EWS;
+    LOG_INFO("Received EWS protobuf from=0x%x", mp.from);
+
+    notifyObservers(msg);
+
+    return true; 
 }

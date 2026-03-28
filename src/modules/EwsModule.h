@@ -1,33 +1,18 @@
 #pragma once
 #include "Observer.h"
-#include "SinglePortModule.h"
+#include "ProtobufModule.h"
+#include "generated/meshtastic/ews.pb.h"
 
-/**
- * Text message handling for Meshtastic.
- *
- * This module is responsible for receiving and storing incoming text messages
- * from the mesh. It updates device state and notifies observers so that other
- * components (such as the MessageRenderer) can later display or process them.
- *
- * Rendering of messages on screen is no longer done here.
- */
-class EwsModule : public SinglePortModule, public Observable<const meshtastic_MeshPacket *>
+
+class EwsModule : public ProtobufModule<meshtastic_Ews>,
+                  public Observable<const meshtastic_Ews *>
 {
-  public:
-    /** Constructor
-     * name is for debugging output
-     */
-    EwsModule() : SinglePortModule("ews", meshtastic_PortNum_EWS) {}
+public:
+    EwsModule();
 
-  protected:
-    /** Called to handle a particular incoming message
-     *
-     * @return ProcessMessage::STOP if you've guaranteed you've handled this
-     *         message and no other handlers should be considered for it.
-     */
-    virtual ProcessMessage handleReceived(const meshtastic_MeshPacket &mp) override;
-    virtual bool wantPacket(const meshtastic_MeshPacket *p) override;
-
+protected:
+    virtual bool handleReceivedProtobuf(const meshtastic_MeshPacket &mp,
+                                        meshtastic_Ews *msg) override;
 };
 
 extern EwsModule *ewsModule;
