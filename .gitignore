@@ -38,7 +38,6 @@ release/
 /compile_commands.json
 src/mesh/raspihttp/certificate.pem
 src/mesh/raspihttp/private_key.pem
-src/mesh/generated/meshtastic
 
 # Ignore logo (set at build time with platformio-custom.py)
 data/boot/logo.*
