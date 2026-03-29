@@ -125,7 +125,7 @@ void ewsToString(LANGUAGE language, meshtastic_Ews *msg, std::string *mainMsg, s
     *instructionBMsg = "📌 : " + instructionB;
 }
 
-void sendTextInChunks(const std::string &text, const meshtastic_MeshPacket &mp)
+void sendTextInChunks(const std::string &text, int channelIndex, const meshtastic_MeshPacket &mp)
 {
     size_t maxPayload = 200;
     size_t offset = 0;
@@ -135,7 +135,7 @@ void sendTextInChunks(const std::string &text, const meshtastic_MeshPacket &mp)
         meshtastic_MeshPacket *pkt = packetPool.allocCopy(mp);
         pkt->from = nodeDB->getNodeNum();
         pkt->to = mp.to;
-        pkt->channel = 0;
+        pkt->channel = channelIndex;
         pkt->id = generatePacketId();
         pkt->rx_time = mp.rx_time;
         pkt->rx_snr = mp.rx_snr;
@@ -159,23 +159,60 @@ void sendTextInChunks(const std::string &text, const meshtastic_MeshPacket &mp)
     }
 }
 
+int getEwsChannelIndexByName(char *name)
+{
+    for (ChannelIndex i = 0; i < channels.getNumChannels(); i++)
+    {
+        LOG_INFO(channels.getName(i));
+        if (strcasecmp(channels.getName(i), name) == 0)
+            return i;
+    }
+    return -1;
+}
+
+/*
+    return a vector of all chanel index, with there lanngue
+*/
+std::pair<int, LANGUAGE> findEwsChannelIndex()
+{
+    int index;
+    if ((index = getEwsChannelIndexByName("Fr_EWS")) >= 0)
+    {
+        return {index, LANGUAGE::FRENCH};
+    }
+    if ((index = getEwsChannelIndexByName("En_EWS")) >= 0)
+    {
+        return {index, LANGUAGE::ENGLISH};
+    }
+    if ((index = getEwsChannelIndexByName("EWS")) >= 0)
+    {
+        return {index, LANGUAGE::ENGLISH};
+    }
+    else
+        return {0, LANGUAGE::ENGLISH};
+}
+
 EwsModule::EwsModule() : ProtobufModule("ews", meshtastic_PortNum_EWS, &meshtastic_Ews_msg) {}
 
 bool EwsModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtastic_Ews *msg)
 {
     LOG_INFO("Received EWS protobuf from=0x%x", mp.from);
 
+    std::pair<int, LANGUAGE> result = findEwsChannelIndex();
+    int channelIndex = result.first;
+    LANGUAGE language = result.second;
+
     std::string mainMsg;
     std::string hazardMsg;
     std::string instructionsAMsg;
     std::string instructionsBMsg;
 
-    ewsToString(LANGUAGE::ENGLISH, msg, &mainMsg, &hazardMsg, &instructionsAMsg, &instructionsBMsg);
+    ewsToString(language, msg, &mainMsg, &hazardMsg, &instructionsAMsg, &instructionsBMsg);
 
-    sendTextInChunks(mainMsg, mp);
-    sendTextInChunks(hazardMsg, mp);
-    sendTextInChunks(instructionsAMsg, mp);
-    sendTextInChunks(instructionsBMsg, mp);
+    sendTextInChunks(mainMsg, channelIndex, mp);
+    sendTextInChunks(hazardMsg, channelIndex, mp);
+    sendTextInChunks(instructionsAMsg, channelIndex, mp);
+    sendTextInChunks(instructionsBMsg, channelIndex, mp);
 
     notifyObservers(msg);
 
