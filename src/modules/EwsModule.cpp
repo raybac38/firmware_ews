@@ -81,13 +81,13 @@ std::string formatDateHours(LanguagePack languagePack, meshtastic_Ews *msg)
     int hours = total_minute / 60;
     int minutes = total_minute % 60;
 
-    return languagePack.weekNumber.at(msg->hazardChronology.weekNumber) +
-           languagePack.days.at(day) +
-           std::to_string(hours) + ":" + std::to_string(minutes) +
+    return languagePack.days.at(day) + " " +
+           std::to_string(hours) + ":" +
+           std::to_string(minutes) +
            languagePack.halfDay.at(halfday);
 }
 
-std::string ewsToString(LANGUAGE language, meshtastic_Ews *msg)
+void ewsToString(LANGUAGE language, meshtastic_Ews *msg, std::string *mainMsg, std::string *hazardMsg, std::string *instructionAMsg, std::string *instructionBMsg)
 {
     LanguagePack languagePack;
     switch (language)
@@ -108,16 +108,55 @@ std::string ewsToString(LANGUAGE language, meshtastic_Ews *msg)
     std::string onsetWeek = languagePack.weekNumber.at(msg->hazardChronology.weekNumber);
     std::string dayHourStr = formatDateHours(languagePack, msg);
     std::string hazardType = languagePack.hazardCategoryAndType.at(msg->hazard.hazardCategoryAndType);
-    std::string severity = languagePack.hazardCategoryAndType.at(msg->hazard.severity);
+    std::string severity = languagePack.severity.at(msg->hazard.severity);
     std::string duration = languagePack.duration.at(msg->hazardChronology.duration);
+    std::string instructionA = languagePack.instructionA.at(msg->guidanceToReact.instructionsListA);
+    std::string instructionB = languagePack.instructionB.at(msg->guidanceToReact.instructionsListB);
 
-    return "EWS ALERT MSG\n" + typeMsg + "\n" +
-           region + "\n" +
-           onsetWeek + " week\n" +
-           dayHourStr + "\n" +
-           "Type of hazard : " + hazardType + "\n" +
-           "Severity: " + severity + "\n" +
-           "Duration : " + duration;
+    *mainMsg = "⚠️ EWS " + typeMsg + " MSG ⚠️\n" +
+               "🌍 : " + region + "\n" +
+               "📅 : " + onsetWeek + " week\n" +
+               "⏰ : " + dayHourStr + "\n" +
+               "⚡  : " + severity + "\n" +
+               "⏳ : " + duration + "\n";
+
+    *hazardMsg = "🚨 :" + hazardType;
+    *instructionAMsg = "📌 : " + instructionA;
+    *instructionBMsg = "📌 : " + instructionB;
+}
+
+void sendTextInChunks(const std::string &text, const meshtastic_MeshPacket &mp)
+{
+    size_t maxPayload = 200;
+    size_t offset = 0;
+
+    while (offset < text.size())
+    {
+        meshtastic_MeshPacket *pkt = packetPool.allocCopy(mp);
+        pkt->from = nodeDB->getNodeNum();
+        pkt->to = mp.to;
+        pkt->channel = 0;
+        pkt->id = generatePacketId();
+        pkt->rx_time = mp.rx_time;
+        pkt->rx_snr = mp.rx_snr;
+        pkt->hop_limit = mp.hop_limit;
+        pkt->want_ack = false;
+        pkt->priority = mp.priority;
+        pkt->rx_rssi = mp.rx_rssi;
+        pkt->hop_start = mp.hop_start;
+        pkt->relay_node = mp.relay_node;
+        pkt->transport_mechanism = meshtastic_MeshPacket_TransportMechanism_TRANSPORT_LORA;
+        pkt->which_payload_variant = meshtastic_MeshPacket_decoded_tag;
+        pkt->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
+
+        size_t chunkSize = std::min(maxPayload, text.size() - offset);
+        memcpy(pkt->decoded.payload.bytes, text.data() + offset, chunkSize);
+        pkt->decoded.payload.size = chunkSize;
+
+        service->sendToPhone(pkt);
+
+        offset += chunkSize;
+    }
 }
 
 EwsModule::EwsModule() : ProtobufModule("ews", meshtastic_PortNum_EWS, &meshtastic_Ews_msg) {}
@@ -126,36 +165,17 @@ bool EwsModule::handleReceivedProtobuf(const meshtastic_MeshPacket &mp, meshtast
 {
     LOG_INFO("Received EWS protobuf from=0x%x", mp.from);
 
-    std::string textPayload = ewsToString(LANGUAGE::ENGLISH, msg);
+    std::string mainMsg;
+    std::string hazardMsg;
+    std::string instructionsAMsg;
+    std::string instructionsBMsg;
 
-    meshtastic_MeshPacket *textPacket = packetPool.allocCopy(mp);
+    ewsToString(LANGUAGE::ENGLISH, msg, &mainMsg, &hazardMsg, &instructionsAMsg, &instructionsBMsg);
 
-    textPacket->from = mp.from;
-    textPacket->to = mp.to;
-    textPacket->channel = 0;
-    textPacket->id = generatePacketId();
-    textPacket->rx_time = mp.rx_time;
-    textPacket->rx_snr = mp.rx_snr;
-    textPacket->hop_limit = mp.hop_limit;
-    textPacket->want_ack = false;
-    textPacket->priority = mp.priority;
-    textPacket->rx_rssi = mp.rx_rssi;
-    textPacket->hop_start = mp.hop_start;
-    textPacket->relay_node = mp.relay_node;
-    textPacket->transport_mechanism = meshtastic_MeshPacket_TransportMechanism_TRANSPORT_LORA;
-    textPacket->which_payload_variant = meshtastic_MeshPacket_decoded_tag;
-    textPacket->decoded.portnum = meshtastic_PortNum_TEXT_MESSAGE_APP;
-
-    std::string text = "hello";
-
-    size_t payloadSize = std::min(text.size(), sizeof(textPacket->decoded.payload.bytes));
-    memcpy(textPacket->decoded.payload.bytes, text.c_str(), payloadSize);
-
-    textPacket->decoded.payload.size = payloadSize;
-
-    service->sendToPhone(textPacket);
-
-    LOG_INFO("Injected EWS as TextMessage: %s", text.c_str());
+    sendTextInChunks(mainMsg, mp);
+    sendTextInChunks(hazardMsg, mp);
+    sendTextInChunks(instructionsAMsg, mp);
+    sendTextInChunks(instructionsBMsg, mp);
 
     notifyObservers(msg);
 
