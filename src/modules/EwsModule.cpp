@@ -113,9 +113,9 @@ void ewsToString(LANGUAGE language, meshtastic_Ews *msg, std::string *mainMsg, s
     std::string instructionA = languagePack.instructionA.at(msg->guidanceToReact.instructionsListA);
     std::string instructionB = languagePack.instructionB.at(msg->guidanceToReact.instructionsListB);
 
-    *mainMsg = "⚠️ EWS " + typeMsg + " MSG ⚠️\n" +
+    *mainMsg = "⚠️ EWS " + typeMsg + " ⚠️\n" +
                "🌍 : " + region + "\n" +
-               "📅 : " + onsetWeek + " week\n" +
+               "📅 : " + onsetWeek + "\n" +
                "⏰ : " + dayHourStr + "\n" +
                "⚡  : " + severity + "\n" +
                "⏳ : " + duration + "\n";
